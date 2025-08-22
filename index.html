@@ -1,33 +1,1048 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Témoignages</title>
-  <style>
-    body {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background-color: #f5f5f5;
-    }
-    h1 {
-      margin-bottom: 20px;
-      color: #333;
-    }
-    img {
-      max-width: 90%;
-      height: auto;
-      border: 2px solid #ccc;
-      border-radius: 10px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
+    <title>Assistant Interface</title>
+    <style>
+        /* --- Réinitialisation et configuration de base --- */
+        :root {
+            --background-color: #000000;
+            --side-menu-bg: #0D0D0D;
+            --text-color: #FFFFFF;
+            --text-color-secondary: #EAEAEA;
+            --text-color-tertiary: #A7A7A7;
+            --placeholder-color: #8E8E8E;
+            --suggestion-bg: #1A1A1A;
+            --suggestion-border: #4D4D4D;
+            --input-bar-border: #4D4D4D;
+            --icon-button-color: #B2B2B2;
+            --profile-icon-border: #555555;
+            --button-bg: #1F1F1F;
+            --button-border: #3A3A3A;
+            --icon-color: #9B9B9B;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html {
+            height: 100%;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        .body-no-scroll {
+            overflow: hidden;
+        }
+
+        button {
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: inherit;
+            font-family: inherit;
+            outline: none;
+        }
+
+        /* --- Menu Latéral --- */
+        .side-menu {
+            position: fixed; top: 0; left: 0; height: 100%; width: 300px;
+            max-width: 85%; background-color: var(--side-menu-bg); z-index: 1000;
+            display: flex; flex-direction: column; padding: 1rem;
+            transform: translateX(-100%); transition: transform 0.3s ease-in-out;
+            font-size: 0.95rem;
+        }
+        .side-menu.is-open { transform: translateX(0); }
+        .menu-header {
+            display: flex; align-items: center; gap: 0.5rem;
+            margin-bottom: 1.5rem; flex-shrink: 0;
+        }
+        .search-bar {
+            flex-grow: 1; display: flex; align-items: center; gap: 0.75rem;
+            background-color: #2D2D2D; border-radius: 999px; padding: 0.6rem 1rem;
+        }
+        .search-bar input {
+            background: transparent; border: none; outline: none;
+            color: var(--text-color); width: 100%;
+        }
+        .search-bar input::placeholder { color: var(--placeholder-color); }
+        .search-bar svg { color: var(--placeholder-color); width: 18px; height: 18px; }
+        .menu-header .icon-button { color: var(--text-color-secondary); }
+        .menu-links { list-style: none; padding: 0; margin: 0; flex-shrink: 0; }
+        
+        .menu-links li {
+            display: flex;
+            align-items: center;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .menu-links li a, .menu-links li span {
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 0.5rem;
+            width: 100%;
+        }
+        .menu-links li:hover { 
+            background-color: #252525;
+        }
+        .menu-links li svg {
+            width: 20px;
+            height: 20px;
+            margin-right: 1rem;
+            color: var(--text-color-secondary);
+            flex-shrink: 0;
+        }
+        
+        /* Style pour le bouton Pro */
+        .menu-links li.pro-button {
+            background-color: #2a2a2d;
+            margin-bottom: 0.5rem;
+        }
+        .menu-links li.pro-button a {
+            font-weight: 500;
+        }
+        .menu-links li.pro-button svg {
+            color: #FFD700; /* Jaune/Or */
+        }
+
+
+        .menu-spacer { flex-grow: 1; }
+        .menu-footer {
+            flex-shrink: 0; padding-top: 1rem; border-top: 1px solid #2D2D2D;
+            display: flex; align-items: center; justify-content: space-between; cursor: pointer;
+        }
+        .user-profile { display: flex; align-items: center; gap: 0.75rem; }
+        .user-profile img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+        .menu-footer svg { 
+            color: var(--text-color-tertiary);
+            transition: transform 0.3s ease-in-out;
+        }
+        .menu-footer.is-active svg {
+            transform: rotate(180deg);
+        }
+        .menu-extra-info {
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, padding 0.3s ease-in-out;
+            color: var(--text-color-tertiary);
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        .menu-extra-info.is-visible {
+            max-height: 50px;
+            opacity: 1;
+            padding-top: 1rem;
+        }
+
+
+        /* --- Overlay --- */
+        #overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); z-index: 999;
+            opacity: 0; visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        #overlay.is-visible { opacity: 1; visibility: visible; }
+
+        /* --- Structure Principale --- */
+        .container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            transition: filter 0.3s ease-in-out, transform 0.3s ease-in-out;
+        }
+
+        .container.is-menu-open {
+            filter: blur(4px);
+            transform: scale(0.98);
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .top-bar {
+            padding: 0.5rem 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            flex-shrink: 0;
+            height: 50px;
+            position: relative; 
+        }
+
+        .profile-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 1px solid var(--profile-icon-border);
+            padding: 2px;
+            cursor: pointer;
+            background-color: #fff;
+        }
+
+        .profile-icon img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            display: block;
+            object-fit: cover;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 1rem;
+            transition: padding-bottom 0.3s ease-out, justify-content 0.3s ease-out;
+        }
+        
+        .main-content.input-focused {
+            padding-bottom: 10vh;
+            justify-content: flex-end;
+        }
+
+        .main-content h1 {
+            font-size: clamp(1.75rem, 5vw, 2.2rem);
+            font-weight: 600;
+            margin-bottom: 2rem;
+            white-space: nowrap;
+        }
+
+        .suggestions {
+            display: grid;
+            grid-template-columns: auto auto;
+            justify-content: center;
+            gap: 10px;
+            transition: opacity 0.2s ease-in-out; 
+        }
+
+        .suggestion-button {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.75rem;
+            background-color: var(--suggestion-bg);
+            border: 1px solid var(--suggestion-border);
+            border-radius: 1.25rem;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--text-color-secondary);
+            white-space: nowrap;
+        }
+        
+        .suggestions .suggestion-button:nth-child(3) {
+            grid-column: 1 / -1;
+            justify-self: center;
+        }
+        
+        .scroll-container {
+            display: flex;
+            overflow-x: auto;
+            white-space: nowrap;
+            padding: 0 1rem 1rem 1rem; 
+            width: 100%;
+            flex-shrink: 0;
+        }
+
+        .scroll-container::-webkit-scrollbar { display: none; }
+        .scroll-container { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .suggestion-card {
+            background-color: var(--button-bg);
+            border: 1px solid var(--button-border);
+            color: var(--text-color);
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 110px;
+            flex-shrink: 0;
+            margin-right: 12px;
+            cursor: pointer;
+            text-align: left;
+            width: 140px; 
+        }
+        .suggestion-card:last-child { margin-right: 0; }
+        .suggestion-card svg {
+            width: 24px; height: 24px; color: var(--icon-color);
+        }
+        .suggestion-card span {
+            font-size: 0.95rem; font-weight: 500; white-space: normal;
+        }
+
+        .input-bar-container {
+            padding: 0.75rem 1rem;
+            flex-shrink: 0;
+        }
+
+        .input-bar {
+            display: flex; align-items: center; gap: 0.75rem;
+            border: 1px solid var(--input-bar-border); border-radius: 1.75rem;
+            padding: 0.5rem; padding-left: 1rem;
+        }
+
+        .icon-button, .top-bar .icon-button { color: var(--text-color); }
+        .input-bar .icon-button {
+            flex-shrink: 0; width: 38px; height: 38px; display: flex;
+            align-items: center; justify-content: center; color: var(--icon-button-color);
+        }
+        .input-bar .icon-button svg { width: 24px; height: 24px; }
+        .input-bar input {
+            flex-grow: 1; background-color: transparent; border: none;
+            color: var(--text-color); font-size: 1rem; height: 38px;
+            outline: none; min-width: 50px;
+        }
+        .input-bar input::placeholder { color: var(--placeholder-color); font-weight: 400; }
+        .input-bar .mic-levels-button { background-color: #2F2F2F; border-radius: 50%; color: white; }
+
+        @media (max-width: 480px) {
+            .top-bar { padding: 0.5rem; }
+            .input-bar-container { padding: 0.5rem; }
+            .input-bar { gap: 0.4rem; padding: 0.4rem; padding-left: 0.75rem; }
+            .input-bar .icon-button { width: 34px; height: 34px; }
+            .input-bar .icon-button svg { width: 20px; height: 20px; }
+            .input-bar input { height: 34px; font-size: 0.95rem; }
+            .scroll-container { padding: 0 0.5rem 0.5rem 0.5rem; }
+        }
+        /* --- STYLES POUR LE MENU DÉROULANT 'MODES' --- */
+        .top-bar-center {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .dropdown-container {
+            position: relative;
+            display: flex;
+            justify-content: center;
+        }
+        .mode-button {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            border: 2px solid var(--text-color);
+            padding: 5px 15px; 
+            font-size: 0.9rem;
+            cursor: pointer;
+            border-radius: 5px;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .mode-arrow-svg {
+            height: 10px;
+            width: auto;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            top: 100%;
+            margin-top: 8px;
+            background-color: #1c1c1e;
+            border: 1px solid #444;
+            border-radius: 8px;
+            min-width: 380px;
+            box-shadow: 0px 10px 20px 0px rgba(0,0,0,0.4);
+            z-index: 2000; 
+            padding: 10px;
+            padding-top: 40px; 
+        }
+        .close-btn {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            background: none;
+            border: none;
+            color: #aaa;
+            font-size: 24px;
+            cursor: pointer;
+            line-height: 1;
+            padding: 5px;
+        }
+        .close-btn:hover {
+            color: #fff;
+        }
+        .columns-wrapper {
+            display: flex;
+            justify-content: space-between;
+        }
+        .column {
+            flex: 1;
+            padding: 0 15px;
+            min-width: 0;
+        }
+        .column:first-child {
+            border-right: 1px solid #444;
+        }
+        .column h4 {
+            margin-top: 5px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .option-container {
+            display: block;
+            position: relative;
+            margin-bottom: 5px;
+        }
+        .column label {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            padding-left: 45px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .column label:hover {
+            background-color: #3a3a3c;
+        }
+        .label-icon {
+            width: 18px;
+            height: 18px;
+            margin-right: 8px;
+            stroke: #c7c7c7;
+            flex-shrink: 0;
+        }
+        .column input[type="radio"] {
+            display: none;
+        }
+        .column label::before {
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            border: 2px solid #888;
+            border-radius: 50%;
+            transition: all 0.2s ease-in-out;
+        }
+        .column label::after {
+            content: '';
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%) scale(0);
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #fff;
+            transition: transform 0.2s ease-in-out;
+        }
+        .column input[type="radio"]:checked + label::before {
+            background-color: #007aff;
+            border-color: #007aff;
+        }
+        .column input[type="radio"]:checked + label::after {
+            transform: translateY(-50%) scale(1);
+        }
+        .show {
+            display: block;
+        }
+        
+        /* --- STYLES POUR L'IFRAME SUR GLISSEMENT --- */
+        .pull-iframe-wrapper {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 3000;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 60px 10px 0 10px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        .pull-iframe-wrapper.is-visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .pull-iframe-wrapper iframe {
+            width: 100%;
+            height: 55px; 
+            border: 1px solid #555;
+            border-radius: 27.5px;
+            background-color: #1c1c1e;
+        }
+        .pull-iframe-wrapper .close-btn {
+            top: 15px;
+            left: 15px; 
+            color: #fff;
+            background-color: rgba(0,0,0,0.5);
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0;
+        }
+
+        /* --- NOUVEAUX STYLES POUR LE MENU DU BAS --- */
+        .attach-menu-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 2499; /* Juste en dessous du menu */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        .attach-menu-overlay.is-visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .attach-menu {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 2500;
+            background-color: #1d1d1f;
+            width: 100%;
+            max-width: 700px;
+            margin: 0 auto;
+            border-radius: 24px 24px 0 0;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            box-shadow: 0px -10px 30px rgba(0, 0, 0, 0.2);
+            transform: translateY(100%);
+            transition: transform 0.3s ease-in-out;
+        }
+        .attach-menu.is-visible {
+            transform: translateY(0);
+        }
+        
+        .attach-menu .top-buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+        
+        .attach-menu .icon-button {
+            background-color: #333335;
+            border-radius: 12px;
+            padding: 16px 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #e2e2e3;
+        }
+        
+        .attach-menu .icon-button svg {
+            width: 24px;
+            height: 24px;
+        }
+        
+        .attach-menu .actions-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .attach-menu .action-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 12px;
+            border-radius: 10px;
+        }
+        
+        .attach-menu .action-item svg {
+            width: 22px;
+            height: 22px;
+            fill: #9c9c9e;
+        }
+        
+        .attach-menu .action-item span {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+    </style>
 </head>
 <body>
-  <h1>Il n'y a pas d'autres témoignages disponibles.</h1>
-  <img src="file_000000000884624394808a28233479ff.png" alt="Aucun témoignage">
+<nav class="side-menu" id="side-menu">
+        <div class="menu-header">
+            <div class="search-bar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" placeholder="Rechercher">
+            </div>
+            <button class="icon-button"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg></button>
+        </div>
+        <ul class="menu-links">
+            <li class="pro-button">
+                <a href="#">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zM19 19H5a1 1 0 000 2h14a1 1 0 000-2z"/></svg>
+                    Passer à Pro
+                </a>
+            </li>
+            <li>
+                <span> 
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                    Nouveau chat
+                </span>
+            </li>
+            <li>
+                <a href="../autre/espace bibliothèque/index.html">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>
+                    Bibliothèque
+                </a>
+            </li>
+            <li>
+                <a href="../autre/Rappel actualités etc/index.html">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Rappel
+                </a>
+            </li>
+        </ul>
+        <div class="menu-spacer"></div>
+        <div class="menu-footer" id="menu-footer-toggle">
+            <div class="user-profile">
+                <img src="logo.png" alt="Avatar de l'utilisateur">
+                <span>XomegAI</span>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="menu-extra-info" id="menu-extra-info">
+            <p>Gratuit</p>
+        </div>
+    </nav>
+    <div id="overlay"></div>
+
+    <div class="container" id="main-container">
+        <header class="top-bar">
+            <button class="icon-button" id="menu-toggle"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 12H21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 6H21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 18H21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            
+            <div class="top-bar-center">
+                <div class="dropdown-container">
+                    <button id="modeBtn" class="mode-button">
+                        Modes
+                        <svg class="mode-arrow-svg" viewBox="0 0 100 85" xmlns="http://www.w3.org/2000/svg">
+                            <path 
+                                fill="black" 
+                                stroke="white"
+                                stroke-width="8"
+                                d="M 8.8,0 H 91.2 C 96.6,0 100.5,5.4 97.8,10 L 56.6,80 C 53.9,84.6 46.1,84.6 43.4,80 L 2.2,10 C -0.5,5.4 3.4,0 8.8,0 Z"
+                            />
+                        </svg>
+                    </button>
+                    <div id="myDropdown" class="dropdown-content">
+                        <button id="closeMenuBtn" class="close-btn">&times;</button>
+                        <div class="columns-wrapper">
+                            <div class="column">
+                                <h4>Qualité</h4>
+                                <div class="option-container">
+                                    <input type="radio" id="q1" name="qualite" value="full" checked>
+                                    <label for="q1">
+                                        <svg class="label-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                                        Full Qualité
+                                    </label>
+                                </div>
+                                <div class="option-container">
+                                    <input type="radio" id="q2" name="qualite" value="eco">
+                                    <label for="q2">
+                                        <svg class="label-icon" viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M50 118 C 50 118, 100 90, 95 60 C 90 30, 65 5, 50 2 C 35 5, 10 30, 5 60 C 0 90, 50 118, 50 118 Z" fill="none" stroke-width="5" stroke-linecap="round"/>
+                                            <g stroke-width="3" stroke-linecap="round" fill="none">
+                                                <path d="M50 116 C 50 90, 50 50, 50 12" /><path d="M50 95 C 60 92, 75 85, 84 75" /><path d="M50 70 C 65 68, 78 60, 85 50" /><path d="M50 45 C 60 44, 68 38, 73 30" /><path d="M50 95 C 40 92, 25 85, 16 75" /><path d="M50 70 C 35 68, 22 60, 15 50" /><path d="M50 45 C 40 44, 32 38, 27 30" />
+                                            </g>
+                                        </svg>
+                                        Éco
+                                    </label>
+                                </div>
+                                <div class="option-container">
+                                    <input type="radio" id="q3" name="qualite" value="ultra-eco">
+                                    <label for="q3">
+                                        <svg class="label-icon" viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+                                            <g transform="translate(-18, 5) scale(0.8)">
+                                                <path d="M50 118 C 50 118, 100 90, 95 60 C 90 30, 65 5, 50 2 C 35 5, 10 30, 5 60 C 0 90, 50 118, 50 118 Z" fill="none" stroke-width="6" stroke-linecap="round"/>
+                                                <g stroke-width="4" stroke-linecap="round" fill="none">
+                                                    <path d="M50 116 C 50 90, 50 50, 50 12" /><path d="M50 95 C 60 92, 75 85, 84 75" /><path d="M50 70 C 65 68, 78 60, 85 50" /><path d="M50 45 C 60 44, 68 38, 73 30" /><path d="M50 95 C 40 92, 25 85, 16 75" /><path d="M50 70 C 35 68, 22 60, 15 50" /><path d="M50 45 C 40 44, 32 38, 27 30" />
+                                                </g>
+                                            </g>
+                                            <g transform="translate(18, 5) scale(0.8)">
+                                                <path d="M50 118 C 50 118, 100 90, 95 60 C 90 30, 65 5, 50 2 C 35 5, 10 30, 5 60 C 0 90, 50 118, 50 118 Z" fill="none" stroke-width="6" stroke-linecap="round"/>
+                                                <g stroke-width="4" stroke-linecap="round" fill="none">
+                                                    <path d="M50 116 C 50 90, 50 50, 50 12" /><path d="M50 95 C 60 92, 75 85, 84 75" /><path d="M50 70 C 65 68, 78 60, 85 50" /><path d="M50 45 C 60 44, 68 38, 73 30" /><path d="M50 95 C 40 92, 25 85, 16 75" /><path d="M50 70 C 35 68, 22 60, 15 50" /><path d="M50 45 C 40 44, 32 38, 27 30" />
+                                                </g>
+                                            </g>
+                                        </svg>
+                                        Éco Ultra
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="column">
+                                <h4>Visibilité</h4>
+                                <div class="option-container">
+                                    <input type="radio" id="v2" name="visibilite" value="prive" checked>
+                                    <label for="v2">
+                                        <svg class="label-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                                        Privé
+                                    </label>
+                                </div>
+                                <div class="option-container">
+                                    <input type="radio" id="v1" name="visibilite" value="public">
+                                    <label for="v1">
+                                        <svg class="label-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                                        Public
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="profile-icon">
+                <img src="logo.png" alt="Icône de profil">
+            </div>
+        </header>
+
+        <div id="pull-iframe-container" class="pull-iframe-wrapper">
+            <button id="close-iframe-btn" class="close-btn">
+                <svg fill="currentColor" viewBox="0 0 24 24" width="24px" height="24px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            </button>
+            <iframe data-src="https://loscriptsx.fr" title="Contenu externe"></iframe>
+        </div>
+
+        <main class="main-content" id="main-content">
+            <h1>Comment puis-je vous aider ?</h1>
+            <div class="suggestions">
+                <button class="suggestion-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L11.8 9.2a3.83 3.83 0 0 0-1.08 2.12l-.2 1.22a1.21 1.21 0 0 0 1.34 1.34l1.22-.2a3.83 3.83 0 0 0 2.12-1.08l7.84-7.84a1.21 1.21 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M3 8h4"/><path d="M6 18v-4"/><path d="M4 16h4"/></svg>Créer une image</button>
+                <button class="suggestion-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>Analyser des images</button>
+                <button class="suggestion-button">Plus</button>
+            </div>
+        </main>
+<div class="scroll-container">
+            <button class="suggestion-card">
+                <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z"></path></svg>
+                <span>Dernières nouvelles</span>
+            </button>
+            <button class="suggestion-card">
+                <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.158 0a.225.225 0 01.225-.225h.008a.225.225 0 01.225.225v.008a.225.225 0 01-.225.225h-.008a.225.225 0 01-.225-.225v-.008z"></path></svg>
+                <span>Créer des images</span>
+            </button>
+            <button class="suggestion-card">
+                <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.898 20.562L16.25 22.5l-.648-1.938a3.375 3.375 0 00-2.672-2.672L11.25 18l1.938-.648a3.375 3.375 0 002.672-2.672L16.25 13.5l.648 1.938a3.375 3.375 0 002.672 2.672L21.75 18l-1.938.648a3.375 3.375 0 00-2.672 2.672z"></path></svg>
+                <span>Style dessin animé</span>
+            </button>
+            <button class="suggestion-card">
+                 <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.75 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"></path></svg>
+                <span>Analyser des documents</span>
+            </button>
+            <button class="suggestion-card">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 14v-4"></path><path stroke-linecap="round" stroke-linejoin="round" d="M10 16V8"></path><path stroke-linecap="round" stroke-linejoin="round" d="M14 14v-4"></path><path stroke-linecap="round" stroke-linejoin="round" d="M18 17V7"></path></svg>
+                <span>Mode vocal</span>
+            </button>
+            <button class="suggestion-card">
+                <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8V6a2 2 0 012-2h2"></path><path stroke-linecap="round" stroke-linejoin="round" d="M21 8V6a2 2 0 00-2-2h-2"></path><path stroke-linecap="round" stroke-linejoin="round" d="M3 16v2a2 2 0 002 2h2"></path><path stroke-linecap="round" stroke-linejoin="round" d="M21 16v2a2 2 0 01-2 2h-2"></path><circle cx="12" cy="11.5" r="1.5"></circle><path stroke-linecap="round" stroke-linejoin="round" d="M9 17l3-3 3 3"></path></svg>
+                <span>Modifier les images</span>
+            </button>
+        </div>
+        <footer class="input-bar-container">
+            <div class="input-bar">
+                <button class="icon-button" id="open-attach-menu-btn">
+                    <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-4H7v-2h4V7h2v4h4v2h-4v4h-2z"/>
+                    </svg>
+                </button>
+                <input type="text" placeholder="Poser une question" id="main-input">
+                <button class="icon-button" id="mic-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="23"/><line x1="8" x2="16" y1="23" y2="23"/></svg></button>
+                <button class="icon-button mic-levels-button" id="levels-button"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 10V14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.5 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.5 4V20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.5 10V14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                <button class="icon-button" id="send-button" style="display: none;"><svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
+            </div>
+        </footer>
+    </div>
+    <div id="attach-menu-overlay" class="attach-menu-overlay"></div>
+
+    <div id="attach-menu" class="attach-menu">
+        <div class="top-buttons-grid">
+            <button class="icon-button">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+                </svg>
+                <span>Caméra</span>
+            </button>
+            <button class="icon-button">
+                <svg style="fill: none;" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M6.5 21H17.5C19.433 21 21 19.433 21 17.5V6.5C21 4.567 19.433 3 17.5 3H6.5C4.567 3 3 4.567 3 6.5V17.5C3 19.433 4.567 21 6.5 21Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M14.5 12C15.8807 12 17 10.8807 17 9.5C17 8.11929 15.8807 7 14.5 7C13.1193 7 12 8.11929 12 9.5C12 10.8807 13.1193 12 14.5 12Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M3 16L7 12L13 18L17 14L21 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Photos</span>
+            </button>
+            <button class="icon-button">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                </svg>
+                <span>Fichiers</span>
+            </button>
+        </div>
+
+        <ul class="actions-list">
+            <li class="action-item">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2a7 7 0 0 0-7 7c0 2.25 1.06 4.25 2.68 5.5A1 1 0 0 0 8 15v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2a1 1 0 0 0 .32-.7A7 7 0 0 0 12 2zm-1 18h2v2h-2v-2zM9 19h6a1 1 0 0 0 1-1v-1H8v1a1 1 0 0 0 1 1z" />
+                </svg>
+                <span>Délai de réflexion allongé</span>
+            </li>
+            <li class="action-item">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M15.5 14h-.79l-.28-.27A6.5 6.5 0 0 0 16 9.5a6.5 6.5 0 1 0-13 0A6.5 6.5 0 0 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zm4.5-4.5h-2v2H11V11H9v-1.5H7V9h2V7h1.5v2H13v.5z"/>
+                </svg>
+                <span>Recherche approfondie</span>
+            </li>
+            <li class="action-item">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+                    <path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM9 4h2v5l-1-.75L9 9V4zm9 16H6V4h1v9l3-2.25L13 13V4h5v16z"/>
+                </svg>
+                <span>Étudier et Apprendre</span>
+            </li>
+            <li class="action-item">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+                    <path d="M15.5 2.5a.74.74 0 0 1 .53.22l2.5 2.5a.75.75 0 0 1 0 1.06l-8.5 8.5a.75.75 0 0 1-.53.22H6.25a.75.75 0 0 1-.75-.75V11.5a.75.75 0 0 1 .22-.53l8.5-8.5a.74.74 0 0 1 .53-.22zm-1.06 1.06L6.75 11.25v2h2l7.69-7.69-2-2z"/>
+                    <path d="M21.25 9.5a.75.75 0 0 0-1.06-1.06l-1.5 1.5a.75.75 0 0 0 1.06 1.06zM6 18.5h9a.75.75 0 0 0 0-1.5H6a.75.75 0 0 0 0 1.5zm-3.25-5a.75.75 0 0 0-1.06-1.06l-1.5 1.5a.75.75 0 0 0 1.06 1.06z"/>
+                </svg>
+                <span>Créer une image</span>
+            </li>
+            <li class="action-item">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.5.06-1 .17-1.48L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.53c-.25-.8-1-1.4-1.9-1.4h-1v-3c0-.55-.45-1-1-1h-2v-2h2c.55 0 1-.45 1-1V7h1c.9 0 1.65-.6 1.9-1.4.35.9.5 1.9.5 3.4 0 2.4-.6 4.5-1.6 6.4z"/>
+                </svg>
+                <span>Recherche sur le Web</span>
+            </li>
+        </ul>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Sélection des éléments ---
+            const body = document.body;
+            const menuToggle = document.getElementById('menu-toggle');
+            const sideMenu = document.getElementById('side-menu');
+            const overlay = document.getElementById('overlay');
+            const mainContainer = document.getElementById('main-container');
+            const mainContent = document.getElementById('main-content');
+            const mainInput = document.getElementById('main-input');
+            const suggestionsContainer = document.querySelector('.suggestions');
+            const menuFooterToggle = document.getElementById('menu-footer-toggle');
+            const menuExtraInfo = document.getElementById('menu-extra-info');
+            
+            // --- NOUVEAU : Sélection des boutons de la barre de saisie ---
+            const micButton = document.getElementById('mic-button');
+            const levelsButton = document.getElementById('levels-button');
+            const sendButton = document.getElementById('send-button');
+
+            // --- Logique du menu latéral ---
+            function openMenu() {
+                sideMenu.classList.add('is-open');
+                overlay.classList.add('is-visible');
+                mainContainer.classList.add('is-menu-open');
+                body.classList.add('body-no-scroll');
+            }
+
+            function closeMenu() {
+                sideMenu.classList.remove('is-open');
+                overlay.classList.remove('is-visible');
+                mainContainer.classList.remove('is-menu-open');
+                body.classList.remove('body-no-scroll');
+            }
+
+            menuToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                sideMenu.classList.contains('is-open') ? closeMenu() : openMenu();
+            });
+
+            overlay.addEventListener('click', closeMenu);
+            
+            if(menuFooterToggle && menuExtraInfo) {
+                menuFooterToggle.addEventListener('click', () => {
+                    menuFooterToggle.classList.toggle('is-active');
+                    menuExtraInfo.classList.toggle('is-visible');
+                });
+            }
+
+            // --- Gestion de la hauteur de la page ---
+            const setContainerHeight = () => {
+                if (window.visualViewport) {
+                    mainContainer.style.height = `${window.visualViewport.height}px`;
+                } else {
+                    mainContainer.style.height = `${window.innerHeight}px`;
+                }
+            };
+            setContainerHeight();
+            
+            // --- Logique de base pour le focus et le blur ---
+            mainInput.addEventListener('focus', () => {
+                mainContent.classList.add('input-focused');
+                if (suggestionsContainer) {
+                    suggestionsContainer.style.display = 'none';
+                }
+            });
+            
+            mainInput.addEventListener('blur', () => {
+                mainContent.classList.remove('input-focused');
+                if (suggestionsContainer) {
+                    suggestionsContainer.style.display = 'grid';
+                }
+            });
+
+            // --- NOUVEAU : Logique d'affichage dynamique du bouton d'envoi ---
+            mainInput.addEventListener('input', () => {
+                const hasText = mainInput.value.trim().length > 0;
+                if (micButton && levelsButton && sendButton) {
+                    micButton.style.display = hasText ? 'none' : 'flex';
+                    levelsButton.style.display = hasText ? 'none' : 'flex';
+                    sendButton.style.display = hasText ? 'flex' : 'none';
+                }
+            });
+
+            // --- Logique pour le clavier virtuel ---
+            let resizeTimer;
+            const isVirtualKeyboardDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+            if (isVirtualKeyboardDevice && window.visualViewport) {
+                window.visualViewport.addEventListener('resize', () => {
+                    setContainerHeight();
+                    clearTimeout(resizeTimer);
+                    resizeTimer = setTimeout(() => {
+                        if (document.activeElement !== mainInput) {
+                            return;
+                        }
+                        const keyboardClosed = window.visualViewport.height >= window.innerHeight * 0.9;
+                        if (keyboardClosed) {
+                            mainInput.blur();
+                        }
+                    }, 150);
+                });
+            } else {
+                window.addEventListener('resize', setContainerHeight);
+            }
+
+            // --- Logique pour le menu déroulant 'Modes' ---
+            const modeButton = document.getElementById('modeBtn');
+            const dropdownMenu = document.getElementById('myDropdown');
+            const closeMenuBtn = document.getElementById('closeMenuBtn');
+
+            function toggleModeMenu() {
+                dropdownMenu.classList.toggle('show');
+            }
+
+            function closeModeMenu() {
+                dropdownMenu.classList.remove('show');
+            }
+
+            if(modeButton && dropdownMenu && closeMenuBtn) {
+                modeButton.onclick = toggleModeMenu;
+                closeMenuBtn.onclick = closeModeMenu;
+
+                window.addEventListener('click', function(event) {
+                    if (dropdownMenu.classList.contains('show') && !modeButton.contains(event.target) && !dropdownMenu.contains(event.target)) {
+                        closeModeMenu();
+                    }
+                });
+            }
+
+            // --- Logique pour l'iframe sur glissement ---
+            const pullIframeContainer = document.getElementById('pull-iframe-container');
+            const closeIframeBtn = document.getElementById('close-iframe-btn');
+            const iframe = pullIframeContainer ? pullIframeContainer.querySelector('iframe') : null;
+            let touchStartY = 0;
+
+            if (pullIframeContainer && iframe) {
+                // PRÉCHARGEMENT DE L'IFRAME
+                iframe.setAttribute('src', iframe.dataset.src);
+                
+                document.body.addEventListener('touchstart', (e) => {
+                    touchStartY = e.touches[0].clientY;
+                }, { passive: true });
+
+                document.body.addEventListener('touchmove', (e) => {
+                    if (window.scrollY === 0 && e.touches[0].clientY > touchStartY) {
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+
+                document.body.addEventListener('touchend', (e) => {
+                    if (touchStartY === null) return;
+                    const touchEndY = e.changedTouches[0].clientY;
+                    const pullDistance = touchEndY - touchStartY;
+                    // La condition vérifie déjà si on est tout en haut
+                    if (window.scrollY === 0 && pullDistance > 100) {
+                        pullIframeContainer.classList.add('is-visible');
+                    }
+                });
+                
+                closeIframeBtn.addEventListener('click', () => {
+                    pullIframeContainer.classList.remove('is-visible');
+                });
+                
+                pullIframeContainer.addEventListener('click', (e) => {
+                    if (e.target === pullIframeContainer) {
+                        pullIframeContainer.classList.remove('is-visible');
+                    }
+                });
+            }
+            
+            // --- LOGIQUE POUR LE MENU DU BAS ---
+            const openAttachMenuBtn = document.getElementById('open-attach-menu-btn');
+            const attachMenu = document.getElementById('attach-menu');
+            const attachMenuOverlay = document.getElementById('attach-menu-overlay');
+
+            if(openAttachMenuBtn && attachMenu && attachMenuOverlay) {
+                openAttachMenuBtn.addEventListener('click', () => {
+                    attachMenu.classList.add('is-visible');
+                    attachMenuOverlay.classList.add('is-visible');
+                });
+
+                attachMenuOverlay.addEventListener('click', () => {
+                    attachMenu.classList.remove('is-visible');
+                    attachMenuOverlay.classList.remove('is-visible');
+                });
+            }
+        });
+    </script>
 </body>
 </html>
